@@ -68,7 +68,7 @@ export default function ConversationList({ onSelectConversation, selectedId, onN
     if (error) { setLoading(false); return; }
 
     const otherIds = (convs || []).map(c => c.user_one === user.id ? c.user_two : c.user_one);
-    let profileMap = new Map<string, Profile>();
+    const profileMap = new Map<string, Profile>();
     if (otherIds.length > 0) {
       const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url, last_seen').in('id', otherIds);
       profiles?.forEach(p => profileMap.set(p.id, p));
@@ -76,7 +76,7 @@ export default function ConversationList({ onSelectConversation, selectedId, onN
 
     // Fetch read statuses
     const convIds = (convs || []).map(c => c.id);
-    let readMap = new Map<string, string>();
+    const readMap = new Map<string, string>();
     if (convIds.length > 0) {
       const { data: reads } = await supabase
         .from('conversation_reads')

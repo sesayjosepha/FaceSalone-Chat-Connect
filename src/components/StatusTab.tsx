@@ -71,7 +71,7 @@ export default function StatusTab() {
     const others = allStatuses.filter(s => s.user_id !== user.id);
     const userIds = [...new Set(others.map(s => s.user_id))];
 
-    let profileMap = new Map<string, Profile>();
+    const profileMap = new Map<string, Profile>();
     if (userIds.length > 0) {
       const { data: profiles } = await supabase.from('profiles').select('id, username, avatar_url').in('id', userIds);
       profiles?.forEach(p => profileMap.set(p.id, p));

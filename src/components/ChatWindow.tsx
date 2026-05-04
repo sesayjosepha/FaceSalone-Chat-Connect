@@ -163,7 +163,7 @@ export default function ChatWindow({ roomId, roomName, onlineUsers, typingUsers,
 
     // Fetch reply messages
     const replyIds = (data || []).filter((m) => m.reply_to).map((m) => m.reply_to!);
-    let replyMap = new Map<string, { content: string; profile?: Profile }>();
+    const replyMap = new Map<string, { content: string; profile?: Profile }>();
     if (replyIds.length > 0) {
       const { data: replies } = await supabase.from('messages').select('id, content, user_id').in('id', replyIds);
       replies?.forEach((r) => {
@@ -173,7 +173,7 @@ export default function ChatWindow({ roomId, roomName, onlineUsers, typingUsers,
 
     // Fetch reactions
     const msgIds = (data || []).map((m) => m.id);
-    let reactionsMap = new Map<string, Reaction[]>();
+    const reactionsMap = new Map<string, Reaction[]>();
     if (msgIds.length > 0) {
       const { data: reactions } = await supabase.from('message_reactions').select('*').in('message_id', msgIds);
       reactions?.forEach((r) => {
