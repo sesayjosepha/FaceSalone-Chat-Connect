@@ -12,10 +12,70 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v5
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
+          node-version: 24
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Debug Vercel credentials
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Vercel version:" 
+          vercel --version
+          echo "Vercel whoami:" 
+          # If token is invalid/unauthorized this should fail here with clear output
+          vercel whoami --token="$VERCEL_TOKEN" || true
+
+          echo "Attempting API connectivity check (non-fatal)."
+          # This additional check often surfaces auth vs project issues earlier.
+          vercel projects --token="$VERCEL_TOKEN" || true
+
+      - name: Build (Vite)
+        run: |
+          set -euo pipefail
+          npm ci
+          npm run build
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+
+          echo "Deploying to Vercel projectId=$VERCEL_PROJECT_ID orgId=$VERCEL_ORG_ID sha=$GITHUB_SHA"
+
+          # If projectId/orgId are wrong, CLI output will typically include "Project not found".
+          # If token is wrong, it will typically include "Unauthorized".
+          set +e
+          vercel deploy \
+            --prebuilt \
+            --archive=tgz \
+            --prod \
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID" \
+            --project="$VERCEL_PROJECT_ID" \
+            --name="${GITHUB_REPOSITORY_NAME}-${GITHUB_SHA}" \
+            --cwd="." 2>&1 | tee /tmp/vercel-deploy.log
+          status=$?
+          set -e
+
+          if [ $status -ne 0 ]; then
+            if grep -qi "unauthorized" /tmp/vercel-deploy.log; then
+              echo "ERROR: Vercel API token unauthorized. Check secrets.VERCEL_TOKEN." >&2
+            fi
+            if grep -qi "project not found" /tmp/vercel-deploy.log; then
+              echo "ERROR: Vercel project not found. Check secrets.VERCEL_ORG_ID and secrets.VERCEL_PROJECT_ID." >&2
+            fi
+            cat /tmp/vercel-deploy.log >&2
+            exit $status
+          fi
+
+
 
